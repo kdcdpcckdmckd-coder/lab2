@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -27,26 +28,16 @@ void parse(const char *s) {
         if (isalpha((unsigned char)c)) {
             words[wi][pos++] = toupper((unsigned char)c);
         } else if (c == '+' || c == '=') {
-            if (pos) {
-                words[wi][pos] = 0;
-                wi++;
-                pos = 0;
-            }
+            if (pos) { words[wi][pos] = 0; wi++; pos = 0; }
         }
     }
-    if (pos) {
-        words[wi][pos] = 0;
-        wi++;
-    }
+    if (pos) { words[wi][pos] = 0; wi++; }
     nadd = wi - 1;
 
     for (int w = 0; w < wi; w++)
         for (int i = 0; words[w][i]; i++) {
             unsigned char ch = words[w][i];
-            if (!seen[ch]) {
-                seen[ch] = 1;
-                letters[nlet++] = ch;
-            }
+            if (!seen[ch]) { seen[ch] = 1; letters[nlet++] = ch; }
         }
 }
 
@@ -59,7 +50,7 @@ long wval(const char *w) {
 
 int badzero(void) {
     for (int w = 0; w <= nadd; w++) {
-        int len = strlen(words[w]);
+        int len = (int)strlen(words[w]);
         if (len > 1 && val[(unsigned char)words[w][0]] == 0)
             return 1;
     }
@@ -75,13 +66,11 @@ int checksum(void) {
 
 void go(int idx) {
     if (found) return;
-
     if (idx == nlet) {
         if (!badzero() && checksum())
             found = 1;
         return;
     }
-
     char l = letters[idx];
     for (int d = 0; d <= 9 && !found; d++) {
         if (used[d]) continue;
@@ -127,10 +116,17 @@ int main(void) {
     if (!fgets(in, sizeof(in), stdin)) return 1;
     in[strcspn(in, "\n")] = 0;
 
-    if (solve(in, out, sizeof(out)))
+    clock_t t0 = clock();
+    int ok = solve(in, out, sizeof(out));
+    clock_t t1 = clock();
+    double ms = (double)(t1 - t0) * 1000.0 / CLOCKS_PER_SEC;
+
+    if (ok)
         printf("Решение: %s\n", out);
     else
         printf("Решение не найдено.\n");
+
+    printf("Время решения: %.3f мс\n", ms);
 
     return 0;
 }
