@@ -8,53 +8,37 @@
 
 #define MAXW 8
 #define MAXL 16
+#define MAXCOL 16
 
 char words[MAXW][MAXL];
 int nadd;
-char letters[10];
-int nlet;
-int used[10];
 int val[256];
-int found;
+int used[10];
 int is_leading[256];
+int found;
+int maxlen;
 
 void parse(const char *s) {
     nadd = 0;
-    nlet = 0;
     int wi = 0, pos = 0;
-    int seen[256] = {0};
 
     for (int i = 0; s[i]; i++) {
         char c = s[i];
         if (isalpha((unsigned char)c)) {
             words[wi][pos++] = toupper((unsigned char)c);
         } else if (c == '+' || c == '=') {
-            if (pos) {
-                words[wi][pos] = 0;
-                wi++;
-                pos = 0;
-            }
+            if (pos) { words[wi][pos] = 0; wi++; pos = 0; }
         }
     }
-    if (pos) {
-        words[wi][pos] = 0;
-        wi++;
-    }
+    if (pos) { words[wi][pos] = 0; wi++; }
     nadd = wi - 1;
-
-    for (int w = 0; w < wi; w++)
-        for (int i = 0; words[w][i]; i++) {
-            unsigned char ch = words[w][i];
-            if (!seen[ch]) {
-                seen[ch] = 1;
-                letters[nlet++] = ch;
-            }
-        }
 
     memset(is_leading, 0, sizeof(is_leading));
     for (int w = 0; w < wi; w++)
         if (strlen(words[w]) > 1)
             is_leading[(unsigned char)words[w][0]] = 1;
+
+    maxlen = (int)strlen(words[nadd]);
 }
 
 long wval(const char *w) {
@@ -64,42 +48,84 @@ long wval(const char *w) {
     return v;
 }
 
-int checksum(void) {
-    long s = 0;
-    for (int w = 0; w < nadd; w++)
-        s += wval(words[w]);
-    return s == wval(words[nadd]);
-}
+void solve_col(int c, int carry);
 
-void go(int idx) {
+void assign_and_check(int c, int carry_in, char *newl, int ncount, int idx) {
     if (found) return;
 
-    if (idx == nlet) {
-        if (checksum())
-            found = 1;
+    if (idx == ncount) {
+        long sum = carry_in;
+        for (int w = 0; w < nadd; w++) {
+            int len = (int)strlen(words[w]);
+            if (len > c)
+                sum += val[(unsigned char)words[w][len - 1 - c]];
+        }
+        int rlen = (int)strlen(words[nadd]);
+        char rletter = (rlen > c) ? words[nadd][rlen - 1 - c] : 0;
+        if (!rletter) return; /* не должно случаться для корректного ребуса */
+
+        if (sum % 10 != val[(unsigned char)rletter]) return;
+        int carry_out = (int)(sum / 10);
+        solve_col(c + 1, carry_out);
         return;
     }
 
-    char l = letters[idx];
+    char l = newl[idx];
     for (int d = 0; d <= 9 && !found; d++) {
         if (used[d]) continue;
         if (d == 0 && is_leading[(unsigned char)l]) continue;
         used[d] = 1;
         val[(unsigned char)l] = d;
-        go(idx + 1);
+        assign_and_check(c, carry_in, newl, ncount, idx + 1);
+        if (found) return;
         used[d] = 0;
+        val[(unsigned char)l] = -1;
     }
+}
+
+void solve_col(int c, int carry) {
+    if (found) return;
+
+    if (c == maxlen) {
+        if (carry == 0) found = 1;
+        return;
+    }
+
+    char newl[12];
+    int ncount = 0;
+    int seen[256] = {0};
+
+    for (int w = 0; w < nadd; w++) {
+        int len = (int)strlen(words[w]);
+        if (len > c) {
+            unsigned char letter = words[w][len - 1 - c];
+            if (val[letter] == -1 && !seen[letter]) {
+                seen[letter] = 1;
+                newl[ncount++] = letter;
+            }
+        }
+    }
+
+    int rlen = (int)strlen(words[nadd]);
+    if (rlen > c) {
+        unsigned char rletter = words[nadd][rlen - 1 - c];
+        if (val[rletter] == -1 && !seen[rletter]) {
+            seen[rletter] = 1;
+            newl[ncount++] = rletter;
+        }
+    }
+
+    assign_and_check(c, carry, newl, ncount, 0);
 }
 
 int solve(const char *in, char *out, size_t sz) {
     parse(in);
-    if (nlet > 10) return 0;
 
     memset(used, 0, sizeof(used));
     memset(val, -1, sizeof(val));
     found = 0;
 
-    go(0);
+    solve_col(0, 0);
     if (!found) return 0;
 
     char tmp[256] = {0};
