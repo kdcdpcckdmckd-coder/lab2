@@ -62,7 +62,7 @@ void assign_and_check(int c, int carry_in, char *newl, int ncount, int idx) {
         }
         int rlen = (int)strlen(words[nadd]);
         char rletter = (rlen > c) ? words[nadd][rlen - 1 - c] : 0;
-        if (!rletter) return; /* не должно случаться для корректного ребуса */
+        if (!rletter) return; 
 
         if (sum % 10 != val[(unsigned char)rletter]) return;
         int carry_out = (int)(sum / 10);
@@ -115,6 +115,17 @@ void solve_col(int c, int carry) {
         }
     }
 
+    
+    for (int i = 0; i < ncount; i++) {
+        for (int j = i + 1; j < ncount; j++) {
+            if (!is_leading[(unsigned char)newl[i]] && is_leading[(unsigned char)newl[j]]) {
+                char t = newl[i];
+                newl[i] = newl[j];
+                newl[j] = t;
+            }
+        }
+    }
+
     assign_and_check(c, carry, newl, ncount, 0);
 }
 
@@ -152,17 +163,22 @@ int main(void) {
     if (!fgets(in, sizeof(in), stdin)) return 1;
     in[strcspn(in, "\n")] = 0;
 
-    clock_t t0 = clock();
     int ok = solve(in, out, sizeof(out));
-    clock_t t1 = clock();
-    double ms = (double)(t1 - t0) * 1000.0 / CLOCKS_PER_SEC;
 
     if (ok)
         printf("Решение: %s\n", out);
     else
         printf("Решение не найдено.\n");
 
-    printf("Время решения: %.3f мс\n", ms);
+    int repeats = 100000;
+    clock_t t0 = clock();
+    for (int r = 0; r < repeats; r++)
+        solve(in, out, sizeof(out));
+    clock_t t1 = clock();
+    double total_ms = (double)(t1 - t0) * 1000.0 / CLOCKS_PER_SEC;
+    double avg_ms = total_ms / repeats;
+
+    printf("Время решения (среднее по %d повторам): %.5f мс\n", repeats, avg_ms);
 
     return 0;
 }
