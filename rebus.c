@@ -16,6 +16,7 @@ int nlet;
 int used[10];
 int val[256];
 int found;
+int is_leading[256];
 
 void parse(const char *s) {
     nadd = 0;
@@ -28,17 +29,32 @@ void parse(const char *s) {
         if (isalpha((unsigned char)c)) {
             words[wi][pos++] = toupper((unsigned char)c);
         } else if (c == '+' || c == '=') {
-            if (pos) { words[wi][pos] = 0; wi++; pos = 0; }
+            if (pos) {
+                words[wi][pos] = 0;
+                wi++;
+                pos = 0;
+            }
         }
     }
-    if (pos) { words[wi][pos] = 0; wi++; }
+    if (pos) {
+        words[wi][pos] = 0;
+        wi++;
+    }
     nadd = wi - 1;
 
     for (int w = 0; w < wi; w++)
         for (int i = 0; words[w][i]; i++) {
             unsigned char ch = words[w][i];
-            if (!seen[ch]) { seen[ch] = 1; letters[nlet++] = ch; }
+            if (!seen[ch]) {
+                seen[ch] = 1;
+                letters[nlet++] = ch;
+            }
         }
+
+    memset(is_leading, 0, sizeof(is_leading));
+    for (int w = 0; w < wi; w++)
+        if (strlen(words[w]) > 1)
+            is_leading[(unsigned char)words[w][0]] = 1;
 }
 
 long wval(const char *w) {
@@ -46,15 +62,6 @@ long wval(const char *w) {
     for (int i = 0; w[i]; i++)
         v = v * 10 + val[(unsigned char)w[i]];
     return v;
-}
-
-int badzero(void) {
-    for (int w = 0; w <= nadd; w++) {
-        int len = (int)strlen(words[w]);
-        if (len > 1 && val[(unsigned char)words[w][0]] == 0)
-            return 1;
-    }
-    return 0;
 }
 
 int checksum(void) {
@@ -66,14 +73,17 @@ int checksum(void) {
 
 void go(int idx) {
     if (found) return;
+
     if (idx == nlet) {
-        if (!badzero() && checksum())
+        if (checksum())
             found = 1;
         return;
     }
+
     char l = letters[idx];
     for (int d = 0; d <= 9 && !found; d++) {
         if (used[d]) continue;
+        if (d == 0 && is_leading[(unsigned char)l]) continue;
         used[d] = 1;
         val[(unsigned char)l] = d;
         go(idx + 1);
